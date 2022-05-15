@@ -44,44 +44,44 @@ void wake_up_sleepers();
    and registers the corresponding interrupt. */
 void timer_init(void)
 {
-   list_init(&list_of_sleepers); // Initialize the List
-   pit_configure_channel(0, 2, TIMER_FREQ);
-   intr_register_ext(0x20, timer_interrupt, "8254 Timer");
+    list_init(&list_of_sleepers); // Initialize the List
+    pit_configure_channel(0, 2, TIMER_FREQ);
+    intr_register_ext(0x20, timer_interrupt, "8254 Timer");
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
 void timer_calibrate(void)
 {
-   unsigned high_bit, test_bit;
+    unsigned high_bit, test_bit;
 
-   ASSERT(intr_get_level() == INTR_ON);
-   printf("Calibrating timer...  ");
+    ASSERT(intr_get_level() == INTR_ON);
+    printf("Calibrating timer...  ");
 
-   /* Approximate loops_per_tick as the largest power-of-two
-      still less than one timer tick. */
-   loops_per_tick = 1u << 10;
-   while (!too_many_loops(loops_per_tick << 1))
-   {
-      loops_per_tick <<= 1;
-      ASSERT(loops_per_tick != 0);
-   }
+    /* Approximate loops_per_tick as the largest power-of-two
+       still less than one timer tick. */
+    loops_per_tick = 1u << 10;
+    while (!too_many_loops(loops_per_tick << 1))
+    {
+        loops_per_tick <<= 1;
+        ASSERT(loops_per_tick != 0);
+    }
 
-   /* Refine the next 8 bits of loops_per_tick. */
-   high_bit = loops_per_tick;
-   for (test_bit = high_bit >> 1; test_bit != high_bit >> 10; test_bit >>= 1)
-      if (!too_many_loops(loops_per_tick | test_bit))
-         loops_per_tick |= test_bit;
+    /* Refine the next 8 bits of loops_per_tick. */
+    high_bit = loops_per_tick;
+    for (test_bit = high_bit >> 1; test_bit != high_bit >> 10; test_bit >>= 1)
+        if (!too_many_loops(loops_per_tick | test_bit))
+            loops_per_tick |= test_bit;
 
-   printf("%'" PRIu64 " loops/s.\n", (uint64_t)loops_per_tick * TIMER_FREQ);
+    printf("%'" PRIu64 " loops/s.\n", (uint64_t)loops_per_tick * TIMER_FREQ);
 }
 
 /* Returns the number of timer ticks since the OS booted. */
 int64_t timer_ticks(void)
 {
-   enum intr_level old_level = intr_disable();
-   int64_t t = ticks;
-   intr_set_level(old_level);
-   return t;
+    enum intr_level old_level = intr_disable();
+    int64_t t = ticks;
+    intr_set_level(old_level);
+    return t;
 }
 
 /* Returns the number of timer ticks elapsed since THEN, which
@@ -93,38 +93,31 @@ int64_t timer_elapsed(int64_t then) { return timer_ticks() - then; }
 // **************************************************************************************************************
 void timer_sleep(int64_t ticks)
 {
-   // we need thread block here to prevent busy-waiting
-   // we have used list_of_sleepers Not semaphore :)
+    // for negative and zero tests
+    if (ticks <= 0) return;
 
-   printf("Thread Blocked Now!\n");
-   // 1) The current interrupt to be disabled then set its value (interrupt level) to the interrupt level
-   enum intr_level old_level;
-   struct thread *t = thread_current();
+    ASSERT(intr_get_level() == INTR_ON);
 
-   // for negative and zero tests
-   if (ticks <= 0)
-      return;
-   ASSERT(intr_get_level() == INTR_ON);
-
-   // calculate wake up time
-   int64_t start = timer_ticks();
-   int64_t wakeup = start + ticks;
-
-   // 2) info about the current thread will be blocked
-   t->wakeup_tick = wakeup;
-
-   old_level = intr_disable(); // disable interrupts
-
-   // 3) insert the element in desending order
-   // 1, 2, 3, 4, 5..
-   // In timer_interrupt, if one shoudn't be awaked, then break
-   list_insert_ordered(&list_of_sleepers, &t->elem, less_sleeper, NULL);
-
-   // 4) block the current thread
-   thread_block();
-
-   // 5) set the interrupt level
-   intr_set_level(old_level);
+    // we need thread block here to prevent busy-waiting
+    // we have used list_of_sleepers Not semaphore :)
+    // 1) The current interrupt to be disabled then set its value (interrupt level) to the interrupt level
+    enum intr_level old_level;
+    struct thread *t = thread_current();
+    // printf("Thread Blocked Now!\n");
+    // calculate wake up time
+    int64_t start = timer_ticks();
+    int64_t wakeup = start + ticks;
+    // 2) info about the current thread will be blocked
+    t->wakeup_tick = wakeup;
+    old_level = intr_disable(); // disable interrupts
+    // 3) insert the element in desending order
+    // 1, 2, 3, 4, 5..
+    // In timer_interrupt, if one shoudn't be awaked, then break
+    list_insert_ordered(&list_of_sleepers, &t->elem, less_sleeper, NULL);
+    // 4) block the current thread
+    thread_block();
+    // 5) set the interrupt level
+    intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -169,35 +162,35 @@ void timer_ndelay(int64_t ns) { real_time_delay(ns, 1000 * 1000 * 1000); }
 /* Prints timer statistics. */
 void timer_print_stats(void)
 {
-   printf("Timer: %" PRId64 " ticks\n", timer_ticks());
+    printf("Timer: %" PRId64 " ticks\n", timer_ticks());
 }
 
 /* Timer interrupt handler. */
 // ***********************************************************************************************************
 static void timer_interrupt(struct intr_frame *args UNUSED)
 {
-   printf("Timer Interrupt!\n");
-   ticks++;
-   thread_tick();
-   wake_up_sleepers();
+    // printf("Timer Interrupt!\n");
+    ticks++;
+    thread_tick();
+    wake_up_sleepers();
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
 static bool too_many_loops(unsigned loops)
 {
-   /* Wait for a timer tick. */
-   int64_t start = ticks;
-   while (ticks == start)
-      barrier();
+    /* Wait for a timer tick. */
+    int64_t start = ticks;
+    while (ticks == start)
+        barrier();
 
-   /* Run LOOPS loops. */
-   start = ticks;
-   busy_wait(loops);
+    /* Run LOOPS loops. */
+    start = ticks;
+    busy_wait(loops);
 
-   /* If the tick count changed, we iterated too long. */
-   barrier();
-   return start != ticks;
+    /* If the tick count changed, we iterated too long. */
+    barrier();
+    return start != ticks;
 }
 
 /* Iterates through a simple loop LOOPS times, for implementing
@@ -209,45 +202,45 @@ static bool too_many_loops(unsigned loops)
    to predict. */
 static void NO_INLINE busy_wait(int64_t loops)
 {
-   while (loops-- > 0)
-      barrier();
+while (loops-- > 0)
+barrier();
 }
 
 /* Sleep for approximately NUM/DENOM seconds. */
 static void real_time_sleep(int64_t num, int32_t denom)
 {
-   /* Convert NUM/DENOM seconds into timer ticks, rounding down.
+    /* Convert NUM/DENOM seconds into timer ticks, rounding down.
 
-         (NUM / DENOM) s
-      ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
-      1 s / TIMER_FREQ ticks
-   */
-   int64_t ticks = num * TIMER_FREQ / denom;
+          (NUM / DENOM) s
+       ---------------------- = NUM * TIMER_FREQ / DENOM ticks.
+       1 s / TIMER_FREQ ticks
+    */
+    int64_t ticks = num * TIMER_FREQ / denom;
 
-   ASSERT(intr_get_level() == INTR_ON);
-   if (ticks > 0)
-   {
-      /* We're waiting for at least one full timer tick.  Use
-         timer_sleep() because it will yield the CPU to other
-         processes. */
-      printf("");
-      timer_sleep(ticks);
-   }
-   else
-   {
-      /* Otherwise, use a busy-wait loop for more accurate
-         sub-tick timing. */
-      real_time_delay(num, denom);
-   }
+    ASSERT(intr_get_level() == INTR_ON);
+    if (ticks > 0)
+    {
+        /* We're waiting for at least one full timer tick.  Use
+           timer_sleep() because it will yield the CPU to other
+           processes. */
+        printf("");
+        timer_sleep(ticks);
+    }
+    else
+    {
+        /* Otherwise, use a busy-wait loop for more accurate
+           sub-tick timing. */
+        real_time_delay(num, denom);
+    }
 }
 
 /* Busy-wait for approximately NUM/DENOM seconds. */
 static void real_time_delay(int64_t num, int32_t denom)
 {
-   /* Scale the numerator and denominator down by 1000 to avoid
-      the possibility of overflow. */
-   ASSERT(denom % 1000 == 0);
-   busy_wait(loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
+    /* Scale the numerator and denominator down by 1000 to avoid
+       the possibility of overflow. */
+    ASSERT(denom % 1000 == 0);
+    busy_wait(loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 }
 
 /* Defining user comparator -- less sleeper element */
@@ -255,31 +248,31 @@ static bool less_sleeper(const struct list_elem *a,
                          const struct list_elem *b,
                          void *aux UNUSED)
 {
-   // access the content of lists through list_entry
-   const int64_t t_1 = list_entry(a, struct thread, elem)->wakeup_tick; // the thread recently added
-   const int64_t t_2 = list_entry(b, struct thread, elem)->wakeup_tick;
-   // if (t_1 <= t_2) -> need sorting
-   return t_1 < t_2;
+    // access the content of lists through list_entry
+    const int64_t t_1 = list_entry(a, struct thread, elem)->wakeup_tick; // the thread recently added
+    const int64_t t_2 = list_entry(b, struct thread, elem)->wakeup_tick;
+    // if (t_1 <= t_2) -> need sorting
+    return t_1 < t_2;
 }
 
 /* To wake up sleepers'threads kol 4waya :) */
 void wake_up_sleepers()
 {
-   // No sleepers -> return
-   struct list_elem *cur_ele;
-   struct thread *t;
-   bool promote = false;
+    // No sleepers -> return
+    struct list_elem *cur_ele;
+    struct thread *t;
+    bool promote = false;
 
-   while (!list_empty(&list_of_sleepers))
-   {
-      cur_ele = list_front(&list_of_sleepers);
-      t = list_entry(cur_ele, struct thread, elem);
-      if (timer_ticks() < t->wakeup_tick) break;
-      list_remove(cur_ele);
-      thread_unblock(t);
-      // promotion if any threads woke up
-      promote = true;
-   }
+    while (!list_empty(&list_of_sleepers))
+    {
+        cur_ele = list_front(&list_of_sleepers);
+        t = list_entry(cur_ele, struct thread, elem);
+        if (timer_ticks() < t->wakeup_tick) break;
+        list_remove(cur_ele);
+        thread_unblock(t);
+        // promotion if any threads woke up
+        promote = true;
+    }
 
-   if (promote) intr_yield_on_return();
+    if (promote) intr_yield_on_return();
 }
