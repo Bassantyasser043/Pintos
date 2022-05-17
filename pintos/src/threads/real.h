@@ -1,8 +1,8 @@
 /* define new data type called real -float-like data type- */
-typedef struct 
+typedef struct
 {
 	int value;
-}real;
+} real;
 
 /* convert from int to real and viceversa. */
 int real_to_int(real i);
