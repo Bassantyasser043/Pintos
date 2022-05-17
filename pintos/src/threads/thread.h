@@ -4,14 +4,15 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "real.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
 {
-    THREAD_RUNNING, /* Running thread. */
-    THREAD_READY,   /* Not running but ready to run. */
-    THREAD_BLOCKED, /* Waiting for an event to trigger. */
-    THREAD_DYING    /* About to be destroyed. */
+   THREAD_RUNNING, /* Running thread. */
+   THREAD_READY,   /* Not running but ready to run. */
+   THREAD_BLOCKED, /* Waiting for an event to trigger. */
+   THREAD_DYING    /* About to be destroyed. */
 };
 
 /* Thread identifier type.
@@ -23,6 +24,13 @@ typedef int tid_t;
 #define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
+
+// adding
+// bound for value of nice
+#define NICE_MIN -20
+#define NICE_DEFAULT 0
+#define NICE_MAX 20
+// end of adding
 
 /* A kernel thread or user process.
 
@@ -82,32 +90,34 @@ typedef int tid_t;
    blocked state is on a semaphore wait list. */
 struct thread
 {
-    /* Owned by thread.c. */
-    tid_t tid;                 /* Thread identifier. */
-    enum thread_status status; /* Thread state. */
-    char name[16];             /* Name (for debugging purposes). */
-    uint8_t *stack;            /* Saved stack pointer. */
-    int priority;              /* Priority. */
-    struct list_elem allelem;  /* List element for all threads list. */
+   /* Owned by thread.c. */
+   tid_t tid;                 /* Thread identifier. */
+   enum thread_status status; /* Thread state. */
+   char name[16];             /* Name (for debugging purposes). */
+   uint8_t *stack;            /* Saved stack pointer. */
+   int priority;              /* Priority. */
+   struct list_elem allelem;  /* List element for all threads list. */
 
-    /* Shared between thread.c and synch.c. */
-    struct list_elem elem; /* List element. */
+   /* Shared between thread.c and synch.c. */
+   struct list_elem elem; /* List element. */
 
-    // added _____________________
-    int64_t wakeup_tick;       // when to wake UP
-    struct lock *lock_waiting; // lock is waiting
-    struct list locks_have;
-    int base_priority;  // virtual priority?
-    int nice;
-    // end of added
+   // added _______________________
+   int64_t wakeup_tick;        /* when to wake UP, after sleeping */
+   struct lock *lock_wait_for; /* lock is waiting for holding it */
+   struct list list_of_locks;  /* list of locks be hold by thread */
+   int nice;                   /* advanced scheduler */
+   int org_priority;           /* store the original thread priority */
+   bool donated;               /* to check if the current thread donated or Not */
+   real recent_cpu;             /* variable stores value of the recent cpu */
+   // end of added ____________________
 
 #ifdef USERPROG
-    /* Owned by userprog/process.c. */
+   /* Owned by userprog/process.c. */
    uint32_t *pagedir; /* Page directory. */
 #endif
 
-    /* Owned by thread.c. */
-    unsigned magic; /* Detects stack overflow. */
+   /* Owned by thread.c. */
+   unsigned magic; /* Detects stack overflow. */
 };
 
 /* If false (default), use round-robin scheduler.
@@ -146,14 +156,11 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
-/* added functions :) */
-void thread_add_lock(struct lock *);
-/* remove the thread that holds the lock on donation list and set priority properly */
-void thread_remove_lock(struct lock *);
-void thread_donate_priority(struct thread *);
-void thread_update_priority(struct thread *);
+// added for advanced scheduler
+void calc_recent_cpu_for_all_threads(void);
+void calc_load_average(void);
 
 /* priority compare */
-bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-bool max_lock_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+struct list_elem *get_max_priority_from_list(struct list *list);
+bool cmp_priority_higher(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 #endif /* threads/thread.h */
