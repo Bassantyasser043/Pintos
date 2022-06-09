@@ -2,7 +2,7 @@
 ==============
 
 This is an output for 'Operating Systems' Course, [PintOS][pintos].
-[pintos]: http://web.stanford.edu/class/cs140/projects/pintos/pintos.html](https://github.com/KhaledElTahan/pintos
+[pintos]: https://github.com/KhaledElTahan/pintos)]https://github.com/KhaledElTahan/pintos
 
 ## Phase 1
 - Wait Queue
