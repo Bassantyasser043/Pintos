@@ -17,7 +17,7 @@ This is a group project for 'Operating Systems' Course, [PintOS][pintos].
 
 
 ## Team:
-- Farida Ragab (https://github.com/farida52369).
-- Bassant Yasser (https://github.com/Bassantyasser043?tab=repositories)
-- Toka Ashraf (https://github.com/TokaAshraf12)
-- Esraa (https://github.com/es539)
+- [Farida Ragab] (https://github.com/farida52369).
+- [Bassant Yasser] (https://github.com/Bassantyasser043?tab=repositories)
+- [Toka Ashraf] (https://github.com/TokaAshraf12)
+- [Esraa] (https://github.com/es539)
