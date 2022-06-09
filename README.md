@@ -21,7 +21,7 @@ This is a group project for 'Operating Systems' Course, [PintOS][pintos].
 ### To run the code(Phase 1):
 - open the terminal in threads file and write make grade to produce a result file continue all test cases either fail or succeeded to pass.
 
-### To run the code(Phase 1):
+### To run the code(Phase 2):
 - you can follow same steps in Phase 1 except that you have to open terminal in Userprog folder and run same line.
 
 
